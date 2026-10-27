@@ -1,0 +1,59 @@
+/* نرتب حقول إضافة الكتاب بجانب بعضها */
+.add-book-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* ننسّق حقول الإدخال والبحث */
+.add-book-form input,
+.library-search {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d6d0c5;
+  border-radius: 8px;
+  background: #fffefa;
+  color: #252525;
+  font: inherit;
+}
+
+/* نسمح لحقول نموذج الإضافة بالتمدد */
+.add-book-form input {
+  flex: 1;
+}
+
+/* ننسّق زر إضافة الكتاب */
+.add-book-form button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #555b45;
+  color: white;
+  cursor: pointer;
+}
+
+/* نجعل البحث يأخذ عرض المحتوى */
+.library-search {
+  width: 100%;
+  margin-top: 22px;
+}
+
+/* ننسّق أزرار القائمة الجانبية */
+.sidebar-nav button {
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #57564f;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* نميّز الصفحة المفتوحة حاليًا */
+.sidebar-nav button.active {
+  background: #dcd8ca;
+  color: #25251f;
+  font-weight: bold;
+}
