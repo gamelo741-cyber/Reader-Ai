@@ -1,4 +1,3 @@
-
 import os
 
 # نستورد الأدوات اللازمة للتعامل مع قاعدة البيانات
@@ -10,6 +9,8 @@ from models import Book
 # نحدد اسم ملف قاعدة البيانات الذي سيُنشأ داخل مجلد backend
 sqlite_url = "sqlite:///./reader_ai.db"
 database_url = os.getenv("DATABASE_URL") or sqlite_url
+
+print(f"Database type: {'PostgreSQL' if database_url.startswith(('postgres://', 'postgresql://', 'postgresql+psycopg://')) else 'SQLite'}")
 
 if database_url.startswith("postgres://"):
     database_url = database_url.replace(
