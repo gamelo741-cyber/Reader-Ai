@@ -23,37 +23,37 @@ function App() {
   useEffect(() => {
     // ننشئ دالة لجلب الكتب من الـ Backend
     async function loadBooks() {
-      try {
-        // نطلب الكتب المحفوظة في SQLite
-        const response = await fetch(`${API_URL}/books`);
+      
+try {
+  // نطلب الكتب المحفوظة من الخادم
+  const response = await fetch(`${API_URL}/books`);
 
-        if (!response.ok) {
-          const details = await response.text();
-          throw new Error(
-            `API error ${response.status}: ${details}`
-          );
-        }
+  // نتحقق من نجاح الطلب
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`API error ${response.status}: ${details}`);
+  }
 
-        const books = await response.json();
-        console.log("Books loaded:", books);
+  // نقرأ استجابة الخادم مرة واحدة فقط
+  const savedBooks: Book[] = await response.json();
 
-        // نتأكد أن الخادم أعاد استجابة ناجحة
-        if (!response.ok) {
-          throw new Error('تعذّر جلب الكتب')
-        }
+  // نحدّث قائمة الكتب
+  setBooks(savedBooks);
 
-        // نحوّل استجابة الخادم إلى قائمة كتب
-        const savedBooks: Book[] = await response.json()
+} catch (error) {
+  // نعرض السبب الحقيقي للخطأ
+  console.error("Failed to load books:", error);
 
-        // نحدّث قائمة الكتب المشتركة في التطبيق
-        setBooks(savedBooks)
-      } catch {
-        // نعرض رسالة إذا فشل الاتصال
-        setError('تعذّر الاتصال بالخادم. تأكد أن Backend يعمل.')
-      } finally {
-        // ننهي التحميل سواء نجح الطلب أو فشل
-        setLoading(false)
-      }
+  const message =
+    error instanceof Error ? error.message : String(error);
+
+  setError(`تعذّر تحميل الكتب: ${message}`);
+
+} finally {
+  // ننهي التحميل
+  setLoading(false);
+}
+
     }
 
     // نشغّل عملية جلب الكتب
