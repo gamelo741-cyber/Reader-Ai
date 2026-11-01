@@ -25,7 +25,17 @@ function App() {
     async function loadBooks() {
       try {
         // نطلب الكتب المحفوظة في SQLite
-        const response = await fetch(`${API_URL}/books`)
+        const response = await fetch(`${API_URL}/books`);
+
+        if (!response.ok) {
+          const details = await response.text();
+          throw new Error(
+            `API error ${response.status}: ${details}`
+          );
+        }
+
+        const books = await response.json();
+        console.log("Books loaded:", books);
 
         // نتأكد أن الخادم أعاد استجابة ناجحة
         if (!response.ok) {
