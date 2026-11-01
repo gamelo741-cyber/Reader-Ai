@@ -1,3 +1,5 @@
+import { API_URL } from '../config'
+
 type SidebarProps = {
   // نحدد الدالة التي تستقبل الصفحة المطلوبة
   onNavigate: (page: 'Dashboard' | 'Library') => void
@@ -31,6 +33,10 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
           Library
         </button>
       </nav>
+
+      <small className="build-stamp">
+        build: {__BUILD_TIME__} | API: {API_URL}
+      </small>
     </aside>
   )
 }

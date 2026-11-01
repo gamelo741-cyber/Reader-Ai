@@ -57,3 +57,11 @@
   color: #25251f;
   font-weight: bold;
 }
+
+.build-stamp {
+  margin-top: auto;
+  padding-top: 16px;
+  color: #77766f;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}

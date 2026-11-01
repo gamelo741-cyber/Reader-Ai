@@ -111,6 +111,12 @@ The backend allows the local frontend origins by default. Set `CORS_ORIGINS` to 
 
 The local database at `backend/reader_ai.db` is excluded from Git so existing local data is not published with the source code. Before deploying, choose a free hosting option with persistent storage; some free hosts discard files such as SQLite databases when an instance restarts.
 
+## Deployment settings
+
+- Set `VITE_API_URL` in Cloudflare Pages as a build-time environment variable pointing to the backend API URL. Redeploy after changing it.
+- Set `CORS_ORIGINS` in Render to the comma-separated frontend origin or origins allowed to call the API.
+- Set `DATABASE_URL` in Render to the PostgreSQL connection URL. Keep credentials private and do not commit this value.
+
 ## Current Status
 
 The current MVP supports book management, search, reading progress updates, and persistent storage.

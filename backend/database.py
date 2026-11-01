@@ -10,8 +10,6 @@ from models import Book
 sqlite_url = "sqlite:///./reader_ai.db"
 database_url = os.getenv("DATABASE_URL") or sqlite_url
 
-print(f"Database type: {'PostgreSQL' if database_url.startswith(('postgres://', 'postgresql://', 'postgresql+psycopg://')) else 'SQLite'}")
-
 if database_url.startswith("postgres://"):
     database_url = database_url.replace(
         "postgres://", "postgresql+psycopg://", 1

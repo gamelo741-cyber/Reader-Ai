@@ -1,3 +1,4 @@
+import logging
 import os
 
 # نستورد FastAPI والأدوات اللازمة للتعامل مع الطلبات والأخطاء
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 # نستورد إعدادات الاتصال بقاعدة البيانات
-from database import create_db_and_tables, get_session
+from database import create_db_and_tables, engine, get_session
 
 # نستورد نموذج الكتاب
 from models import Book
@@ -21,12 +22,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # ننشئ تطبيق Reader AI API
 app = FastAPI(title="Reader AI API")
+logger = logging.getLogger("uvicorn.error")
 
 local_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 configured_origins = [
-    origin.strip()
+    origin.strip().rstrip("/")
     for origin in os.getenv("CORS_ORIGINS", "").split(",")
-    if origin.strip()
+    if origin.strip().rstrip("/")
 ]
 if "*" in configured_origins:
     raise ValueError("CORS_ORIGINS must contain explicit origins, not '*'.")
@@ -54,6 +56,9 @@ class ProgressUpdate(BaseModel):
 # ننشئ جداول قاعدة البيانات عند بدء تشغيل الخادم
 @app.on_event("startup")
 def on_startup():
+    logger.info("Allowed CORS origins: %s", allowed_origins)
+    logger.info("Database dialect: %s", engine.dialect.name)
+
     # ننشئ الجداول إذا لم تكن موجودة
     create_db_and_tables()
 
@@ -63,6 +68,11 @@ def on_startup():
 def home():
     # نرجع رسالة نجاح
     return {"message": "Reader AI API يعمل بنجاح!"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 # ننشئ رابطًا لجلب الكتب المحفوظة

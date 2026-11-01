@@ -11,24 +11,25 @@ import BookCard from '../components/BookCard'
 
 // نستورد نوع بيانات الكتاب
 import type { Book } from '../types'
-import { API_URL } from '../config'
+import { ApiError } from '../api'
+import ApiErrorNotice from '../components/ApiErrorNotice'
 
 // نحدد البيانات والدوال التي تستقبلها الصفحة من App
 type DashboardProps = {
   // قائمة الكتب المشتركة
   books: Book[]
 
-  // دالة تحديث القائمة المشتركة
-  setBooks: React.Dispatch<React.SetStateAction<Book[]>>
+  onUpdateProgress: (id: number, progress: number) => Promise<void>
 
   // دالة التنقل بين الصفحات
   onNavigate: (page: 'Dashboard' | 'Library') => void
 }
 
 // ننشئ صفحة لوحة التحكم
-function Dashboard({ books, setBooks, onNavigate }: DashboardProps) {
-  // نخزّن رسالة الخطأ إذا فشل تحديث التقدم
-  const [error, setError] = useState('')
+function Dashboard({ books, onUpdateProgress, onNavigate }: DashboardProps) {
+  const [error, setError] = useState<ApiError | null>(null)
+  const [serverWaking, setServerWaking] = useState(false)
+  const [failedBookId, setFailedBookId] = useState<number | null>(null)
 
   // نزيد التقدم ونحفظ النسبة الجديدة في قاعدة البيانات
   async function increaseProgress(id: number) {
@@ -40,47 +41,25 @@ function Dashboard({ books, setBooks, onNavigate }: DashboardProps) {
 
     // نحسب نسبة التقدم الجديدة، بحد أقصى 100%
     const nextProgress = Math.min(selectedBook.progress + 1, 100)
+    setError(null)
+    setServerWaking(false)
+    const wakingTimer = window.setTimeout(() => {
+      setServerWaking(true)
+    }, 5_000)
 
     try {
-      // نمسح رسالة الخطأ السابقة
-      setError('')
-
-      // نرسل نسبة التقدم الجديدة إلى FastAPI
-      const response = await fetch(
-        `${API_URL}/books/${id}/progress`,
-        {
-          // نستخدم PATCH لتحديث جزء من بيانات الكتاب
-          method: 'PATCH',
-
-          // نحدد أن البيانات المرسلة بصيغة JSON
-          headers: {
-            'Content-Type': 'application/json',
-          },
-
-          // نرسل نسبة التقدم الجديدة
-          body: JSON.stringify({
-            progress: nextProgress,
-          }),
-        }
-      )
-
-      // نتحقق أن الخادم حفظ التحديث بنجاح
-      if (!response.ok) {
-        throw new Error('تعذّر حفظ تقدم القراءة')
+      await onUpdateProgress(id, nextProgress)
+      setFailedBookId(null)
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError)
+        setFailedBookId(id)
+      } else {
+        throw requestError
       }
-
-      // نستقبل بيانات الكتاب بعد تحديثه في قاعدة البيانات
-      const updatedBook: Book = await response.json()
-
-      // نحدّث الواجهة باستخدام البيانات التي أعادها الخادم
-      setBooks(currentBooks =>
-        currentBooks.map(book =>
-          book.id === updatedBook.id ? updatedBook : book
-        )
-      )
-    } catch {
-      // نعرض رسالة إذا فشل الاتصال أو الحفظ
-      setError('تعذّر حفظ التقدم. تأكد من تشغيل Backend وحاول مجددًا.')
+    } finally {
+      window.clearTimeout(wakingTimer)
+      setServerWaking(false)
     }
   }
 
@@ -97,7 +76,17 @@ function Dashboard({ books, setBooks, onNavigate }: DashboardProps) {
         <Header />
 
         {/* نعرض رسالة الخطأ عند فشل حفظ التقدم */}
-        {error && <p role="alert">{error}</p>}
+        {serverWaking && <p>الخادم يستيقظ، قد يستغرق ذلك حتى دقيقة...</p>}
+        {error && (
+          <ApiErrorNotice
+            error={error}
+            onRetry={() => {
+              if (failedBookId !== null) {
+                void increaseProgress(failedBookId)
+              }
+            }}
+          />
+        )}
 
         {/* قسم الكتب التي نتابع قراءتها */}
         <section className="reading-section">
