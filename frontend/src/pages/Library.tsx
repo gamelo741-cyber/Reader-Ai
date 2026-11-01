@@ -1,55 +1,24 @@
 
-import { useEffect, useState } from 'react'
-import type { FormEvent, Dispatch, SetStateAction } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 
 import Sidebar from '../components/Sidebar'
 import type { Book } from '../types'
-import { API_URL } from '../config'
+import { ApiError } from '../api'
+import ApiErrorNotice from '../components/ApiErrorNotice'
 
 type LibraryProps = {
   books: Book[]
-  setBooks: Dispatch<SetStateAction<Book[]>>
+  onCreateBook: (book: Pick<Book, 'title' | 'author'>) => Promise<void>
   onNavigate: (page: 'Dashboard' | 'Library') => void
 }
 
-function Library({ books, setBooks, onNavigate }: LibraryProps) {
+function Library({ books, onCreateBook, onNavigate }: LibraryProps) {
   const [search, setSearch] = useState('')
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  // جلب الكتب من الخادم عند فتح صفحة المكتبة
-  useEffect(() => {
-    async function loadBooks() {
-      try {
-        setError('')
-
-        const response = await fetch(`${API_URL}/books`)
-
-        if (!response.ok) {
-          const details = await response.text()
-          throw new Error(`API error ${response.status}: ${details}`)
-        }
-
-        const data: Book[] = await response.json()
-        setBooks(data)
-
-      } catch (error) {
-        console.error('Library loadBooks error:', error)
-
-        const message =
-          error instanceof Error ? error.message : String(error)
-
-        setError(`تعذّر تحميل الكتب: ${message}`)
-
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadBooks()
-  }, [setBooks])
+  const [error, setError] = useState<ApiError | null>(null)
+  const [serverWaking, setServerWaking] = useState(false)
 
   // البحث في عناوين الكتب وأسماء المؤلفين
   const filteredBooks = books.filter(book =>
@@ -64,40 +33,29 @@ function Library({ books, setBooks, onNavigate }: LibraryProps) {
 
     if (!title.trim() || !author.trim()) return
 
+    await saveBook()
+  }
+
+  async function saveBook() {
+    setError(null)
+    setServerWaking(false)
+    const wakingTimer = window.setTimeout(() => {
+      setServerWaking(true)
+    }, 5_000)
+
     try {
-      setError('')
-
-      const response = await fetch(`${API_URL}/books`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          author: author.trim(),
-          progress: 0,
-        }),
-      })
-
-      if (!response.ok) {
-        const details = await response.text()
-        throw new Error(`API error ${response.status}: ${details}`)
-      }
-
-      const savedBook: Book = await response.json()
-
-      setBooks(currentBooks => [...currentBooks, savedBook])
-
+      await onCreateBook({ title: title.trim(), author: author.trim() })
       setTitle('')
       setAuthor('')
-
-    } catch (error) {
-      console.error('Library addBook error:', error)
-
-      const message =
-        error instanceof Error ? error.message : String(error)
-
-      setError(`تعذّرت إضافة الكتاب: ${message}`)
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError)
+      } else {
+        throw requestError
+      }
+    } finally {
+      window.clearTimeout(wakingTimer)
+      setServerWaking(false)
     }
   }
 
@@ -131,8 +89,10 @@ function Library({ books, setBooks, onNavigate }: LibraryProps) {
           <button type="submit">Add book</button>
         </form>
 
-        {loading && <p>Loading books...</p>}
-        {error && <p role="alert">{error}</p>}
+        {serverWaking && <p>الخادم يستيقظ، قد يستغرق ذلك حتى دقيقة...</p>}
+        {error && (
+          <ApiErrorNotice error={error} onRetry={() => void saveBook()} />
+        )}
 
         <input
           className="library-search"
@@ -154,7 +114,7 @@ function Library({ books, setBooks, onNavigate }: LibraryProps) {
           ))}
         </div>
 
-        {!loading && filteredBooks.length === 0 && !error && (
+        {filteredBooks.length === 0 && !error && (
           <p>No books found. Try another search.</p>
         )}
       </main>
