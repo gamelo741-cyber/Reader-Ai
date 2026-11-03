@@ -1,7 +1,14 @@
 
 import { useCallback, useEffect, useState } from 'react' // لإدارة الحالة وتشغيل كود عند فتح التطبيق
 import type { Book } from './types' // نستورد نوع الكتاب المشترك
-import { ApiError, createBook, getBooks, updateProgress } from './api'
+import {
+  ApiError,
+  createBook,
+  deleteBook,
+  getBooks,
+  updateBook,
+  updateProgress,
+} from './api'
 import ApiErrorNotice from './components/ApiErrorNotice'
 import Dashboard from './pages/Dashboard' // نستورد لوحة التحكم
 import Library from './pages/Library' // نستورد المكتبة
@@ -67,6 +74,30 @@ function App() {
     )
   }
 
+  async function handleUpdateBook(
+    id: number,
+    data: { title?: string; author?: string }
+  ) {
+    const updatedBook = await updateBook(id, data)
+    setBooks(currentBooks =>
+      currentBooks.map(book =>
+        book.id === updatedBook.id ? updatedBook : book
+      )
+    )
+  }
+
+  async function handleDeleteBook(id: number) {
+    try {
+      await deleteBook(id)
+    } catch (requestError) {
+      if (!(requestError instanceof ApiError) || requestError.status !== 404) {
+        throw requestError
+      }
+    }
+
+    setBooks(currentBooks => currentBooks.filter(book => book.id !== id))
+  }
+
   // نعرض حالة التحميل أو الخطأ قبل إظهار الصفحة
   if (loading) {
     return (
@@ -95,6 +126,8 @@ function App() {
     <Library
       books={books}
       onCreateBook={handleCreateBook}
+      onUpdateBook={handleUpdateBook}
+      onDeleteBook={handleDeleteBook}
       onNavigate={setCurrentPage}
     />
   )

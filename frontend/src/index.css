@@ -33,6 +33,33 @@
   cursor: pointer;
 }
 
+.edit-book-form {
+  margin-top: 0;
+}
+
+.book-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.book-actions button,
+.edit-book-form button {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #555b45;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+.book-actions button:disabled,
+.edit-book-form button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 /* نجعل البحث يأخذ عرض المحتوى */
 .library-search {
   width: 100%;

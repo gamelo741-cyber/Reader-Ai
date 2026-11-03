@@ -102,6 +102,10 @@ async function request<T>(
       )
     }
 
+    if (response.status === 204 || responseBody.length === 0) {
+      return undefined as T
+    }
+
     try {
       return JSON.parse(responseBody) as T
     } catch {
@@ -129,6 +133,20 @@ export function createBook(
     method: 'POST',
     body: { ...book, progress: 0 },
   })
+}
+
+export function updateBook(
+  id: number,
+  data: { title?: string; author?: string }
+): Promise<Book> {
+  return request<Book>(`/books/${id}`, {
+    method: 'PATCH',
+    body: data,
+  })
+}
+
+export function deleteBook(id: number): Promise<void> {
+  return request<void>(`/books/${id}`, { method: 'DELETE' })
 }
 
 export function updateProgress(
