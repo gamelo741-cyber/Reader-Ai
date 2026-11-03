@@ -2,10 +2,10 @@ import logging
 import os
 
 # نستورد FastAPI والأدوات اللازمة للتعامل مع الطلبات والأخطاء
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response
 
 # نستورد أدوات التحقق من بيانات التحديث
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # نستورد أدوات التعامل مع قاعدة البيانات
 from sqlmodel import Session, select
@@ -47,6 +47,36 @@ app.add_middleware(
 )
 
 
+class BookUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = None
+    author: str | None = None
+
+    @field_validator("title", "author", mode="before")
+    @classmethod
+    def reject_null_values(cls, value):
+        if value is None:
+            raise ValueError("This field cannot be null.")
+        return value
+
+    @field_validator("title", "author")
+    @classmethod
+    def normalize_text(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("This field cannot be empty.")
+        if len(value) > 255:
+            raise ValueError("This field cannot be longer than 255 characters.")
+        return value
+
+    @model_validator(mode="after")
+    def require_update_field(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one of title or author must be provided.")
+        return self
+
+
 # نحدد شكل البيانات التي نستقبلها عند تحديث التقدم
 class ProgressUpdate(BaseModel):
     # نسمح بنسبة من صفر إلى 100 فقط
@@ -83,6 +113,36 @@ def get_books(session: Session = Depends(get_session)):
 
     # ننفذ الاستعلام ونعيد النتائج
     return session.exec(statement).all()
+
+
+@app.patch("/books/{book_id}", response_model=Book)
+def update_book(
+    book_id: int,
+    update: BookUpdate,
+    session: Session = Depends(get_session),
+):
+    book = session.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(book, field, value)
+
+    session.add(book)
+    session.commit()
+    session.refresh(book)
+    return book
+
+
+@app.delete("/books/{book_id}", status_code=204)
+def delete_book(book_id: int, session: Session = Depends(get_session)):
+    book = session.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    session.delete(book)
+    session.commit()
+    return Response(status_code=204)
 
 
 # ننشئ رابطًا لإضافة كتاب جديد
