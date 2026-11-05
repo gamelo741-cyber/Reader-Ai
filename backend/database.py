@@ -2,6 +2,7 @@ import os
 
 # نستورد الأدوات اللازمة للتعامل مع قاعدة البيانات
 from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy import inspect, text
 
 # نستورد نموذج الكتاب حتى يتعرّف SQLModel على الجدول المطلوب إنشاؤه
 from models import Book
@@ -33,6 +34,32 @@ engine = create_engine(database_url, **engine_options)
 def create_db_and_tables():
     # ننشئ الجداول المعرّفة في نماذج SQLModel
     SQLModel.metadata.create_all(engine)
+
+
+def ensure_book_status_column():
+    columns = inspect(engine).get_columns("book")
+    if any(column["name"] == "status" for column in columns):
+        return False, 0
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE book ADD COLUMN status VARCHAR(20) "
+                "NOT NULL DEFAULT 'want_to_read'"
+            )
+        )
+        finished_result = connection.execute(
+            text("UPDATE book SET status = 'finished' WHERE progress >= 100")
+        )
+        reading_result = connection.execute(
+            text(
+                "UPDATE book SET status = 'reading' "
+                "WHERE progress > 0 AND progress < 100"
+            )
+        )
+        rows_backfilled = finished_result.rowcount + reading_result.rowcount
+
+    return True, rows_backfilled
 
 
 # ننشئ دالة تفتح جلسة للتعامل مع قاعدة البيانات

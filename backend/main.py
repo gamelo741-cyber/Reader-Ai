@@ -12,7 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlmodel import Session, select
 
 # نستورد إعدادات الاتصال بقاعدة البيانات
-from database import create_db_and_tables, engine, get_session
+from database import (
+    create_db_and_tables,
+    ensure_book_status_column,
+    engine,
+    get_session,
+)
 
 # نستورد نموذج الكتاب
 from models import Book
@@ -99,10 +104,28 @@ class ProgressUpdate(BaseModel):
 @app.on_event("startup")
 def on_startup():
     logger.info("Allowed CORS origins: %s", allowed_origins)
-    logger.info("Database dialect: %s", engine.dialect.name)
+    logger.info(
+        "Database target: dialect=%s host=%s database=%s",
+        engine.dialect.name,
+        engine.url.host,
+        engine.url.database,
+    )
 
     # ننشئ الجداول إذا لم تكن موجودة
     create_db_and_tables()
+    try:
+        added, rows_backfilled = ensure_book_status_column()
+    except Exception:
+        logger.exception("Book status migration failed; startup will abort.")
+        raise
+
+    if added:
+        logger.info(
+            "Book status column added; rows backfilled: %s",
+            rows_backfilled,
+        )
+    else:
+        logger.info("Book status column already existed; rows backfilled: 0")
 
 
 # ننشئ رابطًا للتأكد أن الـ API يعمل
