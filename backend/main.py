@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Literal
 
 # نستورد FastAPI والأدوات اللازمة للتعامل مع الطلبات والأخطاء
 from fastapi import FastAPI, Depends, HTTPException, Response
@@ -23,6 +24,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # ننشئ تطبيق Reader AI API
 app = FastAPI(title="Reader AI API")
 logger = logging.getLogger("uvicorn.error")
+
+BookStatus = Literal["want_to_read", "reading", "finished"]
 
 local_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 configured_origins = [
@@ -52,8 +55,9 @@ class BookUpdate(BaseModel):
 
     title: str | None = None
     author: str | None = None
+    status: BookStatus | None = None
 
-    @field_validator("title", "author", mode="before")
+    @field_validator("title", "author", "status", mode="before")
     @classmethod
     def reject_null_values(cls, value):
         if value is None:
@@ -73,8 +77,16 @@ class BookUpdate(BaseModel):
     @model_validator(mode="after")
     def require_update_field(self):
         if not self.model_fields_set:
-            raise ValueError("At least one of title or author must be provided.")
+            raise ValueError("At least one of title, author, or status must be provided.")
         return self
+
+
+class BookCreate(BaseModel):
+    id: int | None = None
+    title: str
+    author: str
+    progress: int = Field(default=0, ge=0, le=100)
+    status: BookStatus = "want_to_read"
 
 
 # نحدد شكل البيانات التي نستقبلها عند تحديث التقدم
@@ -147,7 +159,7 @@ def delete_book(book_id: int, session: Session = Depends(get_session)):
 
 # ننشئ رابطًا لإضافة كتاب جديد
 @app.post("/books", response_model=Book, status_code=201)
-def add_book(book: Book, session: Session = Depends(get_session)):
+def add_book(book: BookCreate, session: Session = Depends(get_session)):
     # نمنع إرسال رقم الكتاب عند إضافته لأول مرة
     if book.id is not None:
         # نوضح سبب رفض الطلب
@@ -156,17 +168,28 @@ def add_book(book: Book, session: Session = Depends(get_session)):
             detail="لا ترسل id عند إضافة كتاب",
         )
 
+    status = book.status
+    if "status" not in book.model_fields_set and book.progress >= 100:
+        status = "finished"
+
+    new_book = Book(
+        title=book.title,
+        author=book.author,
+        progress=book.progress,
+        status=status,
+    )
+
     # نضيف الكتاب إلى جلسة قاعدة البيانات
-    session.add(book)
+    session.add(new_book)
 
     # نحفظ الكتاب فعليًا
     session.commit()
 
     # نحدّث بيانات الكتاب للحصول على الرقم الذي أنشأته قاعدة البيانات
-    session.refresh(book)
+    session.refresh(new_book)
 
     # نرجع الكتاب بعد حفظه
-    return book
+    return new_book
 
 
 # ننشئ رابطًا لتحديث نسبة التقدم لكتاب محدد
@@ -190,6 +213,8 @@ def update_book_progress(
 
     # نحدّث نسبة التقدم للكتاب
     book.progress = update.progress
+    if update.progress >= 100:
+        book.status = "finished"
 
     # نحفظ التغيير في قاعدة البيانات
     session.add(book)

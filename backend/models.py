@@ -16,3 +16,6 @@ class Book(SQLModel, table=True):
 
     # نخزّن نسبة التقدم في القراءة، وتبدأ من صفر
     progress: int = Field(default=0, ge=0, le=100)
+
+    # نخزّن حالة القراءة كنص متوافق مع عمود varchar في قاعدة البيانات
+    status: str = Field(default="want_to_read", max_length=20)

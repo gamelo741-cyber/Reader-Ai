@@ -5,6 +5,7 @@ Reader AI is a reading assistant designed to help readers organise their books a
 ## Features
 
 - Add books with their titles and authors.
+- Track each book as want to read, reading, or finished.
 - Browse and search books by title or author.
 - Track reading progress from 0% to 100%.
 - Save books and reading progress in an SQLite database.
