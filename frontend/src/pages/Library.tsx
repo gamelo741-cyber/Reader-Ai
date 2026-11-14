@@ -337,32 +337,6 @@ function Library({
         <div className="books-grid">
           {filteredBooks.map(book => (
             <article className="book-item" key={book.id}>
-              <div className="book-status-controls">
-                <span className="book-status-badge">
-                  {STATUS_LABELS[getBookStatus(book)]}
-                </span>
-                <select
-                  value={getBookStatus(book)}
-                  onChange={event => {
-                    if (isBookStatus(event.target.value)) {
-                      void changeStatus(book.id, event.target.value)
-                    }
-                  }}
-                  aria-label={`حالة القراءة للكتاب ${book.title}`}
-                  disabled={
-                    pendingStatusId !== null ||
-                    pendingDeleteId !== null ||
-                    pendingEdit
-                  }
-                >
-                  {STATUS_ORDER.map(status => (
-                    <option key={status} value={status}>
-                      {STATUS_LABELS[status]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {editingBookId === book.id ? (
                 <form
                   className="add-book-form edit-book-form"
@@ -406,6 +380,31 @@ function Library({
                 </form>
               ) : (
                 <>
+                  <div className="book-status-controls">
+                    <span className="book-status-badge">
+                      {STATUS_LABELS[getBookStatus(book)]}
+                    </span>
+                    <select
+                      value={getBookStatus(book)}
+                      onChange={event => {
+                        if (isBookStatus(event.target.value)) {
+                          void changeStatus(book.id, event.target.value)
+                        }
+                      }}
+                      aria-label={`حالة القراءة للكتاب ${book.title}`}
+                      disabled={
+                        pendingStatusId !== null ||
+                        pendingDeleteId !== null ||
+                        pendingEdit
+                      }
+                    >
+                      {STATUS_ORDER.map(status => (
+                        <option key={status} value={status}>
+                          {STATUS_LABELS[status]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <h3>{book.title}</h3>
                   <p>{book.author}</p>
                   <p>{book.progress}% read</p>

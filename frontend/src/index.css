@@ -108,6 +108,12 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 12px;
+  direction: rtl;
+}
+
+.book-status-controls select {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .book-status-badge {
