@@ -1,5 +1,5 @@
 import { API_URL } from './config'
-import type { Book } from './types'
+import type { Book, BookStatus } from './types'
 
 export type ApiErrorKind = 'network' | 'http' | 'timeout' | 'parse'
 
@@ -127,7 +127,7 @@ export function getBooks(): Promise<Book[]> {
 }
 
 export function createBook(
-  book: Pick<Book, 'title' | 'author'>
+  book: Pick<Book, 'title' | 'author'> & { status?: BookStatus }
 ): Promise<Book> {
   return request<Book>('/books', {
     method: 'POST',
@@ -137,7 +137,7 @@ export function createBook(
 
 export function updateBook(
   id: number,
-  data: { title?: string; author?: string }
+  data: { title?: string; author?: string; status?: BookStatus }
 ): Promise<Book> {
   return request<Book>(`/books/${id}`, {
     method: 'PATCH',

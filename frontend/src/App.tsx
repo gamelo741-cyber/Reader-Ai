@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useState } from 'react' // لإدارة الحالة وتشغيل كود عند فتح التطبيق
-import type { Book } from './types' // نستورد نوع الكتاب المشترك
+import type { Book, BookStatus } from './types' // نستورد نوع الكتاب المشترك
 import {
   ApiError,
   createBook,
@@ -60,7 +60,9 @@ function App() {
     return () => window.clearTimeout(startupTimer)
   }, [loadBooks])
 
-  async function handleCreateBook(book: Pick<Book, 'title' | 'author'>) {
+  async function handleCreateBook(
+    book: Pick<Book, 'title' | 'author'> & { status?: BookStatus }
+  ) {
     const savedBook = await createBook(book)
     setBooks(currentBooks => [...currentBooks, savedBook])
   }
@@ -76,7 +78,7 @@ function App() {
 
   async function handleUpdateBook(
     id: number,
-    data: { title?: string; author?: string }
+    data: { title?: string; author?: string; status?: BookStatus }
   ) {
     const updatedBook = await updateBook(id, data)
     setBooks(currentBooks =>

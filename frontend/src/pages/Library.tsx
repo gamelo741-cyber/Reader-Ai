@@ -3,19 +3,43 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 
 import Sidebar from '../components/Sidebar'
-import type { Book } from '../types'
+import {
+  STATUS_LABELS,
+  STATUS_ORDER,
+  type Book,
+  type BookStatus,
+} from '../types'
 import { ApiError } from '../api'
 import ApiErrorNotice from '../components/ApiErrorNotice'
 
+type StatusFilter = BookStatus | 'all'
+
+const STATUS_TABS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'الكل' },
+  { value: 'reading', label: STATUS_LABELS.reading },
+  { value: 'finished', label: STATUS_LABELS.finished },
+  { value: 'want_to_read', label: STATUS_LABELS.want_to_read },
+]
+
 type LibraryProps = {
   books: Book[]
-  onCreateBook: (book: Pick<Book, 'title' | 'author'>) => Promise<void>
+  onCreateBook: (
+    book: Pick<Book, 'title' | 'author'> & { status?: BookStatus }
+  ) => Promise<void>
   onUpdateBook: (
     id: number,
-    data: { title?: string; author?: string }
+    data: { title?: string; author?: string; status?: BookStatus }
   ) => Promise<void>
   onDeleteBook: (id: number) => Promise<void>
   onNavigate: (page: 'Dashboard' | 'Library') => void
+}
+
+function getBookStatus(book: Book): BookStatus {
+  return book.status ?? 'want_to_read'
+}
+
+function isBookStatus(value: string): value is BookStatus {
+  return STATUS_ORDER.some(status => status === value)
 }
 
 function Library({
@@ -28,6 +52,9 @@ function Library({
   const [search, setSearch] = useState('')
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
+  const [newBookStatus, setNewBookStatus] =
+    useState<BookStatus>('want_to_read')
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>('all')
   const [error, setError] = useState<ApiError | null>(null)
   const [serverWaking, setServerWaking] = useState(false)
   const [editingBookId, setEditingBookId] = useState<number | null>(null)
@@ -38,17 +65,33 @@ function Library({
   )
   const [pendingEdit, setPendingEdit] = useState(false)
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
+  const [pendingStatusId, setPendingStatusId] = useState<number | null>(null)
   const [failedAction, setFailedAction] = useState<
-    'add' | 'edit' | 'delete' | null
+    'add' | 'edit' | 'delete' | 'status' | null
   >(null)
   const [failedDeleteId, setFailedDeleteId] = useState<number | null>(null)
+  const [failedStatusChange, setFailedStatusChange] = useState<{
+    bookId: number
+    status: BookStatus
+  } | null>(null)
 
-  // البحث في عناوين الكتب وأسماء المؤلفين
-  const filteredBooks = books.filter(book =>
-    `${book.title} ${book.author}`
+  const statusCounts = books.reduce<Record<BookStatus, number>>(
+    (counts, book) => {
+      counts[getBookStatus(book)] += 1
+      return counts
+    },
+    { want_to_read: 0, reading: 0, finished: 0 }
+  )
+
+  // يجمع البحث بين حالة القراءة والعنوان واسم المؤلف
+  const filteredBooks = books.filter(book => {
+    const matchesStatus =
+      activeStatus === 'all' || getBookStatus(book) === activeStatus
+    const matchesSearch = `${book.title} ${book.author}`
       .toLowerCase()
       .includes(search.toLowerCase())
-  )
+    return matchesStatus && matchesSearch
+  })
 
   // إضافة كتاب جديد
   async function handleAddBook(event: FormEvent<HTMLFormElement>) {
@@ -68,9 +111,14 @@ function Library({
     }, 5_000)
 
     try {
-      await onCreateBook({ title: title.trim(), author: author.trim() })
+      await onCreateBook({
+        title: title.trim(),
+        author: author.trim(),
+        status: newBookStatus,
+      })
       setTitle('')
       setAuthor('')
+      setNewBookStatus('want_to_read')
     } catch (requestError) {
       if (requestError instanceof ApiError) {
         setError(requestError)
@@ -140,6 +188,33 @@ function Library({
     }
   }
 
+  async function changeStatus(bookId: number, status: BookStatus) {
+    setError(null)
+    setFailedAction(null)
+    setFailedStatusChange(null)
+    setServerWaking(false)
+    setPendingStatusId(bookId)
+    const wakingTimer = window.setTimeout(() => {
+      setServerWaking(true)
+    }, 5_000)
+
+    try {
+      await onUpdateBook(bookId, { status })
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError)
+        setFailedAction('status')
+        setFailedStatusChange({ bookId, status })
+      } else {
+        throw requestError
+      }
+    } finally {
+      window.clearTimeout(wakingTimer)
+      setServerWaking(false)
+      setPendingStatusId(null)
+    }
+  }
+
   async function deleteBook(id: number) {
     setError(null)
     setFailedAction(null)
@@ -174,6 +249,8 @@ function Library({
       void saveEdit()
     } else if (failedAction === 'delete' && failedDeleteId !== null) {
       void deleteBook(failedDeleteId)
+    } else if (failedAction === 'status' && failedStatusChange !== null) {
+      void changeStatus(failedStatusChange.bookId, failedStatusChange.status)
     }
   }
 
@@ -204,6 +281,22 @@ function Library({
             required
           />
 
+          <select
+            value={newBookStatus}
+            onChange={event => {
+              if (isBookStatus(event.target.value)) {
+                setNewBookStatus(event.target.value)
+              }
+            }}
+            aria-label="حالة القراءة"
+          >
+            {STATUS_ORDER.map(status => (
+              <option key={status} value={status}>
+                {STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+
           <button type="submit">Add book</button>
         </form>
 
@@ -222,9 +315,54 @@ function Library({
 
         <p>{filteredBooks.length} books found</p>
 
+        <div className="status-filter-tabs" role="tablist" aria-label="تصفية الكتب حسب الحالة">
+          {STATUS_TABS.map(tab => {
+            const count =
+              tab.value === 'all' ? books.length : statusCounts[tab.value]
+            return (
+              <button
+                type="button"
+                className="status-filter-tab"
+                key={tab.value}
+                role="tab"
+                aria-selected={activeStatus === tab.value}
+                onClick={() => setActiveStatus(tab.value)}
+              >
+                {tab.label} ({count})
+              </button>
+            )
+          })}
+        </div>
+
         <div className="books-grid">
           {filteredBooks.map(book => (
             <article className="book-item" key={book.id}>
+              <div className="book-status-controls">
+                <span className="book-status-badge">
+                  {STATUS_LABELS[getBookStatus(book)]}
+                </span>
+                <select
+                  value={getBookStatus(book)}
+                  onChange={event => {
+                    if (isBookStatus(event.target.value)) {
+                      void changeStatus(book.id, event.target.value)
+                    }
+                  }}
+                  aria-label={`حالة القراءة للكتاب ${book.title}`}
+                  disabled={
+                    pendingStatusId !== null ||
+                    pendingDeleteId !== null ||
+                    pendingEdit
+                  }
+                >
+                  {STATUS_ORDER.map(status => (
+                    <option key={status} value={status}>
+                      {STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {editingBookId === book.id ? (
                 <form
                   className="add-book-form edit-book-form"
@@ -304,7 +442,13 @@ function Library({
         </div>
 
         {filteredBooks.length === 0 && !error && (
-          <p>No books found. Try another search.</p>
+          <p>
+            {activeStatus !== 'all' && statusCounts[activeStatus] === 0
+              ? 'لا توجد كتب في هذه الحالة.'
+              : books.length === 0
+                ? 'لا توجد كتب بعد.'
+                : 'لا توجد كتب تطابق البحث.'}
+          </p>
         )}
       </main>
     </div>
