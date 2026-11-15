@@ -1,16 +1,11 @@
-// نحدد أن المكوّن يستقبل نسبة التقدم كرقم
 type ProgressBarProps = {
   progress: number
 }
 
-// ننشئ شريط عرض تقدم القراءة
 function ProgressBar({ progress }: ProgressBarProps) {
-  // نحصر النسبة بين صفر و100 حتى لا يتجاوز الشريط حدوده
   const safeProgress = Math.min(100, Math.max(0, progress))
 
-  // نعرض الشريط الخارجي والجزء الذي يمثّل التقدم
   return (
-    // هذا هو المسار الكامل لشريط التقدم
     <div
       style={{
         width: '100%',
@@ -20,7 +15,6 @@ function ProgressBar({ progress }: ProgressBarProps) {
         overflow: 'hidden',
       }}
     >
-      {/* عرض الجزء الممتلئ يتغير حسب نسبة القراءة */}
       <div
         style={{
           width: `${safeProgress}%`,
@@ -33,5 +27,4 @@ function ProgressBar({ progress }: ProgressBarProps) {
   )
 }
 
-// نصدّر المكوّن كي تستخدمه بطاقة الكتاب
 export default ProgressBar

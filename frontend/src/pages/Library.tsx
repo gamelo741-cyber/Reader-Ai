@@ -11,11 +11,12 @@ import {
 } from '../types'
 import { ApiError } from '../api'
 import ApiErrorNotice from '../components/ApiErrorNotice'
+import { strings } from '../strings'
 
 type StatusFilter = BookStatus | 'all'
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'الكل' },
+  { value: 'all', label: strings.library.all },
   { value: 'reading', label: STATUS_LABELS.reading },
   { value: 'finished', label: STATUS_LABELS.finished },
   { value: 'want_to_read', label: STATUS_LABELS.want_to_read },
@@ -83,7 +84,6 @@ function Library({
     { want_to_read: 0, reading: 0, finished: 0 }
   )
 
-  // يجمع البحث بين حالة القراءة والعنوان واسم المؤلف
   const filteredBooks = books.filter(book => {
     const matchesStatus =
       activeStatus === 'all' || getBookStatus(book) === activeStatus
@@ -93,7 +93,6 @@ function Library({
     return matchesStatus && matchesSearch
   })
 
-  // إضافة كتاب جديد
   async function handleAddBook(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -151,11 +150,11 @@ function Library({
     const trimmedTitle = editTitle.trim()
     const trimmedAuthor = editAuthor.trim()
     if (!trimmedTitle || !trimmedAuthor) {
-      setEditValidationError('أدخل العنوان واسم المؤلف.')
+      setEditValidationError(strings.library.editValidationRequired)
       return
     }
     if (trimmedTitle.length > 255 || trimmedAuthor.length > 255) {
-      setEditValidationError('الحد الأقصى لكل حقل 255 حرفًا.')
+      setEditValidationError(strings.library.editValidationLength)
       return
     }
 
@@ -260,24 +259,24 @@ function Library({
 
       <main className="dashboard">
         <header className="dashboard-header">
-          <h1>My Library</h1>
-          <p>Keep all your books in one place.</p>
+          <h1>{strings.library.title}</h1>
+          <p>{strings.library.description}</p>
         </header>
 
         <form className="add-book-form" onSubmit={handleAddBook}>
           <input
             value={title}
             onChange={event => setTitle(event.target.value)}
-            placeholder="Book title"
-            aria-label="Book title"
+            placeholder={strings.library.bookTitle}
+            aria-label={strings.library.bookTitle}
             required
           />
 
           <input
             value={author}
             onChange={event => setAuthor(event.target.value)}
-            placeholder="Author"
-            aria-label="Author"
+            placeholder={strings.library.author}
+            aria-label={strings.library.author}
             required
           />
 
@@ -288,7 +287,7 @@ function Library({
                 setNewBookStatus(event.target.value)
               }
             }}
-            aria-label="حالة القراءة"
+            aria-label={strings.library.readingStatus}
           >
             {STATUS_ORDER.map(status => (
               <option key={status} value={status}>
@@ -297,10 +296,10 @@ function Library({
             ))}
           </select>
 
-          <button type="submit">Add book</button>
+          <button type="submit">{strings.library.addBook}</button>
         </form>
 
-        {serverWaking && <p>الخادم يستيقظ، قد يستغرق ذلك حتى دقيقة...</p>}
+        {serverWaking && <p>{strings.app.serverWaking}</p>}
         {error && (
           <ApiErrorNotice error={error} onRetry={retryFailedAction} />
         )}
@@ -309,13 +308,17 @@ function Library({
           className="library-search"
           value={search}
           onChange={event => setSearch(event.target.value)}
-          placeholder="Search by title or author..."
-          aria-label="Search books"
+          placeholder={strings.library.searchPlaceholder}
+          aria-label={strings.library.searchAriaLabel}
         />
 
-        <p>{filteredBooks.length} books found</p>
+        <p>{filteredBooks.length} {strings.library.booksFound}</p>
 
-        <div className="status-filter-tabs" role="tablist" aria-label="تصفية الكتب حسب الحالة">
+        <div
+          className="status-filter-tabs"
+          role="tablist"
+          aria-label={strings.library.filterAriaLabel}
+        >
           {STATUS_TABS.map(tab => {
             const count =
               tab.value === 'all' ? books.length : statusCounts[tab.value]
@@ -348,31 +351,43 @@ function Library({
                   <input
                     value={editTitle}
                     onChange={event => setEditTitle(event.target.value)}
-                    aria-label={`عنوان الكتاب ${book.title}`}
+                    aria-label={strings.library.editTitleAriaLabel.replace(
+                      '{title}',
+                      book.title
+                    )}
                     maxLength={255}
                     required
                   />
                   <input
                     value={editAuthor}
                     onChange={event => setEditAuthor(event.target.value)}
-                    aria-label={`اسم مؤلف الكتاب ${book.title}`}
+                    aria-label={strings.library.editAuthorAriaLabel.replace(
+                      '{title}',
+                      book.title
+                    )}
                     maxLength={255}
                     required
                   />
                   <button
                     type="submit"
                     disabled={pendingEdit}
-                    aria-label={`حفظ تعديلات ${book.title}`}
+                    aria-label={strings.library.saveEditAriaLabel.replace(
+                      '{title}',
+                      book.title
+                    )}
                   >
-                    حفظ
+                    {strings.library.save}
                   </button>
                   <button
                     type="button"
                     onClick={cancelEditing}
                     disabled={pendingEdit}
-                    aria-label={`إلغاء تعديل ${book.title}`}
+                    aria-label={strings.library.cancelEditAriaLabel.replace(
+                      '{title}',
+                      book.title
+                    )}
                   >
-                    إلغاء
+                    {strings.library.cancel}
                   </button>
                   {editValidationError && (
                     <p role="alert">{editValidationError}</p>
@@ -391,7 +406,10 @@ function Library({
                           void changeStatus(book.id, event.target.value)
                         }
                       }}
-                      aria-label={`حالة القراءة للكتاب ${book.title}`}
+                      aria-label={strings.library.readingStatusForAriaLabel.replace(
+                        '{title}',
+                        book.title
+                      )}
                       disabled={
                         pendingStatusId !== null ||
                         pendingDeleteId !== null ||
@@ -407,31 +425,40 @@ function Library({
                   </div>
                   <h3>{book.title}</h3>
                   <p>{book.author}</p>
-                  <p>{book.progress}% read</p>
+                  <p>{book.progress}{strings.library.percentRead}</p>
                   <div className="book-actions">
                     <button
                       type="button"
                       onClick={() => startEditing(book)}
                       disabled={pendingEdit || pendingDeleteId !== null}
-                      aria-label={`تعديل ${book.title}`}
+                      aria-label={strings.library.editBookAriaLabel.replace(
+                        '{title}',
+                        book.title
+                      )}
                     >
-                      تعديل
+                      {strings.library.edit}
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         if (
                           window.confirm(
-                            `هل تريد حذف "${book.title}"؟ لا يمكن التراجع.`
+                            strings.library.deleteConfirmation.replace(
+                              '{title}',
+                              book.title
+                            )
                           )
                         ) {
                           void deleteBook(book.id)
                         }
                       }}
                       disabled={pendingDeleteId !== null || pendingEdit}
-                      aria-label={`حذف ${book.title}`}
+                      aria-label={strings.library.deleteBookAriaLabel.replace(
+                        '{title}',
+                        book.title
+                      )}
                     >
-                      حذف
+                      {strings.library.delete}
                     </button>
                   </div>
                 </>
@@ -443,10 +470,10 @@ function Library({
         {filteredBooks.length === 0 && !error && (
           <p>
             {activeStatus !== 'all' && statusCounts[activeStatus] === 0
-              ? 'لا توجد كتب في هذه الحالة.'
+              ? strings.library.emptyStatus
               : books.length === 0
-                ? 'لا توجد كتب بعد.'
-                : 'لا توجد كتب تطابق البحث.'}
+                ? strings.library.emptyLibrary
+                : strings.library.emptySearch}
           </p>
         )}
       </main>

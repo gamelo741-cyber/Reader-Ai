@@ -1,45 +1,37 @@
 import { API_URL } from '../config'
+import { strings } from '../strings'
 
 type SidebarProps = {
-  // نحدد الدالة التي تستقبل الصفحة المطلوبة
   onNavigate: (page: 'Dashboard' | 'Library') => void
-  // نحدد اسم الصفحة المفتوحة حاليًا
   currentPage: 'Dashboard' | 'Library'
 }
 
-// نستقبل معلومات التنقل من المكوّن الأب
 function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   return (
-    // الحاوية الرئيسية للقائمة
     <aside className="sidebar">
-      {/* اسم التطبيق */}
-      <h2 className="logo">Reader AI</h2>
-
-      {/* روابط التنقل بين الصفحات */}
+      <h2 className="logo">{strings.navigation.appName}</h2>
       <nav className="sidebar-nav">
-        {/* عند الضغط نفتح Dashboard */}
         <button
           className={currentPage === 'Dashboard' ? 'active' : ''}
           onClick={() => onNavigate('Dashboard')}
         >
-          Dashboard
+          {strings.navigation.dashboard}
         </button>
-
-        {/* عند الضغط نفتح Library */}
         <button
           className={currentPage === 'Library' ? 'active' : ''}
           onClick={() => onNavigate('Library')}
         >
-          Library
+          {strings.navigation.library}
         </button>
       </nav>
 
       <small className="build-stamp">
-        build: {__BUILD_TIME__} | API: {API_URL}
+        {strings.navigation.buildStamp
+          .replace('{buildTime}', __BUILD_TIME__)
+          .replace('{apiUrl}', API_URL)}
       </small>
     </aside>
   )
 }
 
-// نصدّر القائمة حتى تستخدمها الصفحات
 export default Sidebar

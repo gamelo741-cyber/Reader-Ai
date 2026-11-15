@@ -1,6 +1,6 @@
 
-import { useCallback, useEffect, useState } from 'react' // لإدارة الحالة وتشغيل كود عند فتح التطبيق
-import type { Book, BookStatus } from './types' // نستورد نوع الكتاب المشترك
+import { useCallback, useEffect, useState } from 'react'
+import type { Book, BookStatus } from './types'
 import {
   ApiError,
   createBook,
@@ -10,18 +10,15 @@ import {
   updateProgress,
 } from './api'
 import ApiErrorNotice from './components/ApiErrorNotice'
-import Dashboard from './pages/Dashboard' // نستورد لوحة التحكم
-import Library from './pages/Library' // نستورد المكتبة
+import { strings } from './strings'
+import Dashboard from './pages/Dashboard'
+import Library from './pages/Library'
 
-// ننشئ المكوّن الرئيسي للتطبيق
 function App() {
-  // نحدد الصفحة التي تظهر أولًا
   const [currentPage, setCurrentPage] = useState<'Dashboard' | 'Library'>('Dashboard')
 
-  // نخزّن الكتب، ونبدأ بقائمة فارغة بدل البيانات التجريبية
   const [books, setBooks] = useState<Book[]>([])
 
-  // نحدد هل التطبيق ما زال يجلب الكتب
   const [loading, setLoading] = useState(true)
 
   const [error, setError] = useState<ApiError | null>(null)
@@ -100,13 +97,12 @@ function App() {
     setBooks(currentBooks => currentBooks.filter(book => book.id !== id))
   }
 
-  // نعرض حالة التحميل أو الخطأ قبل إظهار الصفحة
   if (loading) {
     return (
       <p>
         {serverWaking
-          ? 'الخادم يستيقظ، قد يستغرق ذلك حتى دقيقة...'
-          : 'Loading your books...'}
+          ? strings.app.serverWaking
+          : strings.app.loadingBooks}
       </p>
     )
   }
@@ -115,16 +111,13 @@ function App() {
     return <ApiErrorNotice error={error} onRetry={() => void loadBooks(true)} />
   }
 
-  // نعرض الصفحة المطلوبة ونمرر لها نفس قائمة الكتب
   return currentPage === 'Dashboard' ? (
-    // نمرر الكتب ودالة تحديثها إلى لوحة التحكم
     <Dashboard
       books={books}
       onUpdateProgress={handleUpdateProgress}
       onNavigate={setCurrentPage}
     />
   ) : (
-    // نمرر الكتب ودالة تحديثها إلى المكتبة
     <Library
       books={books}
       onCreateBook={handleCreateBook}
@@ -135,5 +128,4 @@ function App() {
   )
 }
 
-// نصدّر التطبيق للاستخدام في main.tsx
 export default App

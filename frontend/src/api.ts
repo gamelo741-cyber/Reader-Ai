@@ -1,4 +1,5 @@
 import { API_URL } from './config'
+import { strings } from './strings'
 import type { Book, BookStatus } from './types'
 
 export type ApiErrorKind = 'network' | 'http' | 'timeout' | 'parse'
@@ -61,11 +62,11 @@ async function request<T>(
       })
     } catch {
       if (timedOut) {
-        throw new ApiError('The request timed out.', 'timeout', url, method)
+        throw new ApiError(strings.errors.requestTimeout, 'timeout', url, method)
       }
 
       throw new ApiError(
-        'The request failed before a response was received.',
+        strings.errors.requestFailed,
         'network',
         url,
         method
@@ -77,11 +78,11 @@ async function request<T>(
       responseBody = await response.text()
     } catch {
       if (timedOut) {
-        throw new ApiError('The request timed out.', 'timeout', url, method)
+        throw new ApiError(strings.errors.requestTimeout, 'timeout', url, method)
       }
 
       throw new ApiError(
-        'The response body could not be read.',
+        strings.errors.responseReadFailed,
         'parse',
         url,
         method,
@@ -94,7 +95,7 @@ async function request<T>(
         .trim()
         .slice(0, HTTP_BODY_SNIPPET_LENGTH)
       throw new ApiError(
-        snippet || response.statusText || 'The server returned an error.',
+        snippet || response.statusText || strings.errors.serverError,
         'http',
         url,
         method,
@@ -110,7 +111,7 @@ async function request<T>(
       return JSON.parse(responseBody) as T
     } catch {
       throw new ApiError(
-        'The server response was not valid JSON.',
+        strings.errors.invalidJson,
         'parse',
         url,
         method,
