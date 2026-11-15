@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import Sidebar from '../components/Sidebar'
@@ -8,6 +8,7 @@ import {
   STATUS_ORDER,
   type Book,
   type BookStatus,
+  type SortOption,
 } from '../types'
 import { ApiError } from '../api'
 import ApiErrorNotice from '../components/ApiErrorNotice'
@@ -20,6 +21,14 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: 'reading', label: STATUS_LABELS.reading },
   { value: 'finished', label: STATUS_LABELS.finished },
   { value: 'want_to_read', label: STATUS_LABELS.want_to_read },
+]
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'recent', label: strings.library.sortOptions.recent },
+  { value: 'title', label: strings.library.sortOptions.title },
+  { value: 'author', label: strings.library.sortOptions.author },
+  { value: 'progress_desc', label: strings.library.sortOptions.progressDesc },
+  { value: 'progress_asc', label: strings.library.sortOptions.progressAsc },
 ]
 
 type LibraryProps = {
@@ -43,6 +52,10 @@ function isBookStatus(value: string): value is BookStatus {
   return STATUS_ORDER.some(status => status === value)
 }
 
+function isSortOption(value: string): value is SortOption {
+  return SORT_OPTIONS.some(option => option.value === value)
+}
+
 function Library({
   books,
   onCreateBook,
@@ -56,6 +69,7 @@ function Library({
   const [newBookStatus, setNewBookStatus] =
     useState<BookStatus>('want_to_read')
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('all')
+  const [sortOption, setSortOption] = useState<SortOption>('recent')
   const [error, setError] = useState<ApiError | null>(null)
   const [serverWaking, setServerWaking] = useState(false)
   const [editingBookId, setEditingBookId] = useState<number | null>(null)
@@ -84,14 +98,46 @@ function Library({
     { want_to_read: 0, reading: 0, finished: 0 }
   )
 
-  const filteredBooks = books.filter(book => {
-    const matchesStatus =
-      activeStatus === 'all' || getBookStatus(book) === activeStatus
-    const matchesSearch = `${book.title} ${book.author}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-    return matchesStatus && matchesSearch
-  })
+  const filteredBooks = useMemo(
+    () =>
+      books.filter(book => {
+        const matchesStatus =
+          activeStatus === 'all' || getBookStatus(book) === activeStatus
+        const matchesSearch = `${book.title} ${book.author}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+        return matchesStatus && matchesSearch
+      }),
+    [activeStatus, books, search]
+  )
+
+  const sortedBooks = useMemo(() => {
+    const compareText = (a: string | undefined, b: string | undefined) =>
+      (a ?? '').localeCompare(b ?? '', undefined, {
+        sensitivity: 'base',
+        numeric: true,
+      })
+    const sorted = [...filteredBooks]
+
+    sorted.sort((a, b) => {
+      if (sortOption === 'recent') return b.id - a.id
+
+      let comparison = 0
+      if (sortOption === 'title') {
+        comparison = compareText(a.title, b.title)
+      } else if (sortOption === 'author') {
+        comparison = compareText(a.author, b.author)
+      } else if (sortOption === 'progress_desc') {
+        comparison = b.progress - a.progress
+      } else {
+        comparison = a.progress - b.progress
+      }
+
+      return comparison || a.id - b.id
+    })
+
+    return sorted
+  }, [filteredBooks, sortOption])
 
   async function handleAddBook(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -304,13 +350,34 @@ function Library({
           <ApiErrorNotice error={error} onRetry={retryFailedAction} />
         )}
 
-        <input
-          className="library-search"
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-          placeholder={strings.library.searchPlaceholder}
-          aria-label={strings.library.searchAriaLabel}
-        />
+        <div className="library-toolbar">
+          <input
+            className="library-search"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder={strings.library.searchPlaceholder}
+            aria-label={strings.library.searchAriaLabel}
+          />
+
+          <div className="library-sort-control">
+            <label htmlFor="library-sort">{strings.library.sortBy}</label>
+            <select
+              id="library-sort"
+              value={sortOption}
+              onChange={event => {
+                if (isSortOption(event.target.value)) {
+                  setSortOption(event.target.value)
+                }
+              }}
+            >
+              {SORT_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         <p>{filteredBooks.length} {strings.library.booksFound}</p>
 
@@ -338,7 +405,7 @@ function Library({
         </div>
 
         <div className="books-grid">
-          {filteredBooks.map(book => (
+          {sortedBooks.map(book => (
             <article className="book-item" key={book.id}>
               {editingBookId === book.id ? (
                 <form

@@ -73,6 +73,29 @@
   margin-top: 22px;
 }
 
+.library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.library-toolbar .library-search {
+  flex: 1 1 240px;
+  width: auto;
+  margin-top: 0;
+}
+
+.library-sort-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .status-filter-tabs {
   display: flex;
   flex-wrap: wrap;
